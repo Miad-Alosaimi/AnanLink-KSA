@@ -47,7 +47,7 @@ const ForgotPasswordScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={[Colors.gradient.start, Colors.gradient.end]}
+        colors={Colors.gradient.all}
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -84,7 +84,7 @@ const ForgotPasswordScreen: React.FC = () => {
 
             <TouchableOpacity onPress={handleSend} disabled={isLoading} activeOpacity={0.9}>
               <LinearGradient
-                colors={[Colors.gradient.start, Colors.gradient.end]}
+                colors={Colors.gradient.all}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={styles.sendButton}
               >

@@ -3,6 +3,10 @@ import { OpportunityType } from './opportunity.types';
 
 export type RootStackParamList = {
   Splash: undefined;
+  Intro1: undefined;
+  Intro2: undefined;
+  Intro3: undefined;
+  Intro4: undefined;
   Onboarding: undefined;
   Auth: undefined;
   Main: undefined;
@@ -24,6 +28,11 @@ export type MainTabParamList = {
   ProfileTab: undefined;
 };
 
+export type LeaderboardStackParamList = {
+  Leaderboard: undefined;
+  AddFriends: undefined;
+};
+
 export type HomeStackParamList = {
   Home: undefined;
   HomeMap: undefined;
@@ -32,7 +41,7 @@ export type HomeStackParamList = {
 
 export type OpportunitiesStackParamList = {
   OpportunityList: { type?: OpportunityType };
-  HackathonDetail: { id: number };
+  BootcampDetail: { id: number };
   InternshipDetail: { id: number };
   OpenSourceDetail: { id: number };
   VolunteerDetail: { id: number };
@@ -43,4 +52,7 @@ export type ProfileStackParamList = {
   Bookmarks: undefined;
   SkillPathList: undefined;
   SkillPathDetail: { trackId: string };
+  EditProfile: undefined;
+  About: undefined;
+  MyQR: undefined;
 };

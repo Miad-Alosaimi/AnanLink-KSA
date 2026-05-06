@@ -5,4 +5,3 @@ export { default as Badge } from './Badge';
 export { default as GradientHeader } from './GradientHeader';
 export { default as EmptyState } from './EmptyState';
 export { default as LoadingSpinner } from './LoadingSpinner';
-export { default as Touchable } from './Touchable';

@@ -59,7 +59,7 @@ const Button: React.FC<ButtonProps> = ({
           colors={
             isDisabled
               ? [Colors.ui.disabled, Colors.ui.disabled]
-              : [Colors.gradient.start, Colors.gradient.end]
+              : Colors.gradient.all
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}

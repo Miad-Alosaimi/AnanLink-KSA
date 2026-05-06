@@ -1,17 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Opportunity, OpportunityType } from '../types';
 import {
   getOpportunities,
   getRecentOpportunities,
   getOpportunityById,
 } from '../database/queries';
-import { getCachedEvents, saveCachedEvents } from '../database/queries/cacheQueries';
 import {
-  fetchOpenSourceRepos,
-  fetchDevpostHackathons,
-  fetchRemotiveJobs,
-  fetchJadaratOpportunities,
-} from '../services';
+  getRecommendedRepos,
+  OpenSourceRepo,
+} from '../services/githubService';
+import { useUser } from '../context';
+import { CareerId } from '../constants/skillTracks';
 
 export const useOpportunities = (type?: OpportunityType) => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -22,7 +21,7 @@ export const useOpportunities = (type?: OpportunityType) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getOpportunities(type);
+      const data = await getOpportunities(type, 500);
       setOpportunities(data);
     } catch {
       setError('فشل تحميل الفرص. حاول مجدداً.');
@@ -69,66 +68,85 @@ export const useOpportunityDetail = (id: number) => {
 export type OpportunityFilter =
   | 'all'
   | 'opensource'
-  | 'hackathon'
+  | 'bootcamp'
   | 'internship'
   | 'volunteer';
 
-const CACHE_SOURCE = 'all_opportunities';
+/**
+ * Synthesize a fake "Opportunity" record from a curated GitHub repo.
+ * IDs are negative to avoid colliding with real DB rows.
+ */
+function repoToOpportunity(repo: OpenSourceRepo, idx: number): Opportunity {
+  return {
+    id: -(idx + 1),
+    extId: repo.id,
+    type: 'opensource',
+    title: repo.displayName,
+    subtitle: repo.fullName,
+    organization: repo.fullName.split('/')[0],
+    description: repo.whyArabic,
+    deadline: null,
+    startDate: null,
+    endDate: null,
+    seats: null,
+    location: 'GitHub',
+    city: null,
+    region: null,
+    category: repo.language,
+    jobType: null,
+    level: repo.isBeginnerFriendly ? 'مناسب للمبتدئين' : 'متقدم',
+    durationWeeks: null,
+    latitude: null,
+    longitude: null,
+    xpReward: 50,
+    registrationLink: `https://github.com/${repo.fullName}`,
+    imageUrl: null,
+    isActive: 1,
+    createdAt: new Date().toISOString(),
+    githubUrl: `https://github.com/${repo.fullName}`,
+    stars: repo.starsBaseline,
+    forks: repo.forksBaseline,
+    language: repo.language,
+    isBeginnerFriendly: repo.isBeginnerFriendly,
+  };
+}
 
+/**
+ * Combined opportunities: SQLite for bootcamp/internship/volunteer + curated
+ * GitHub recommendations (synthesized as Opportunity records) for opensource.
+ */
 export const useAllOpportunities = (filter: OpportunityFilter = 'all') => {
+  const { user } = useUser();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const applyFilter = (all: Opportunity[]) =>
-    filter === 'all' ? all : all.filter(o => o.type === filter);
+  const careerId = (user?.specialty as CareerId | undefined) || undefined;
+
+  // Memoized curated repos — these only change if user changes career
+  const opensourceList = useMemo<Opportunity[]>(
+    () => getRecommendedRepos(careerId).map(repoToOpportunity),
+    [careerId]
+  );
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
-    // 1. Try the local cache first — serve immediately if fresh
     try {
-      const cached = await getCachedEvents(CACHE_SOURCE);
-      if (cached?.isFresh) {
-        setOpportunities(applyFilter(cached.data));
-        setIsLoading(false);
-        return;
-      }
-    } catch { /* cache read failure is non-fatal */ }
-
-    // 2. Fetch from all API sources in parallel
-    try {
-      const [github, devpost, remotive, jadarat, volunteers] = await Promise.all([
-        fetchOpenSourceRepos().catch(() => [] as Opportunity[]),
-        fetchDevpostHackathons().catch(() => [] as Opportunity[]),
-        fetchRemotiveJobs().catch(() => [] as Opportunity[]),
-        fetchJadaratOpportunities().catch(() => [] as Opportunity[]),
-        getOpportunities('volunteer').catch(() => [] as Opportunity[]),
-      ]);
-
-      const all: Opportunity[] = [...github, ...devpost, ...remotive, ...jadarat, ...volunteers];
-
-      // 3. Persist to cache for offline use
-      try {
-        await saveCachedEvents(CACHE_SOURCE, all);
-      } catch { /* cache write failure is non-fatal */ }
-
-      setOpportunities(applyFilter(all));
+      // Fetch all opportunities from DB — bump limit to cover the full catalog
+      // (36 bootcamps + 60 volunteer + 31 internships = 127 real items).
+      // The old default limit of 50 caused internships/volunteers to be truncated,
+      // which made the تدريب tab appear empty.
+      const fromDb = await getOpportunities(undefined, 500);
+      const all = [...fromDb, ...opensourceList];
+      const filtered = filter === 'all' ? all : all.filter(o => o.type === filter);
+      setOpportunities(filtered);
     } catch {
       setError('فشل تحميل الفرص');
-
-      // 4. Network failure — serve stale cache if available
-      try {
-        const stale = await getCachedEvents(CACHE_SOURCE);
-        if (stale) {
-          setOpportunities(applyFilter(stale.data));
-        }
-      } catch { /* nothing to serve */ }
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [filter, opensourceList]);
 
   useEffect(() => { load(); }, [load]);
 

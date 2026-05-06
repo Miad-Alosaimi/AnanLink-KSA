@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography } from '../../constants';
 import { Opportunity, OpportunityType } from '../../types';
 import { Strings } from '../../constants/strings';
-import Touchable from '../common/Touchable';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -18,11 +17,11 @@ const TYPE_CONFIG: Record<
   OpportunityType,
   { color: string; lightColor: string; icon: string; label: string }
 > = {
-  hackathon: {
+  bootcamp: {
     color: Colors.opportunity.hackathon,
     lightColor: Colors.opportunity.hackathonLight,
     icon: 'rocket-outline',
-    label: Strings.opportunities.types.hackathon,
+    label: Strings.opportunities.types.bootcamp,
   },
   internship: {
     color: Colors.opportunity.internship,
@@ -51,7 +50,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({
   isBookmarked = false,
   compact = false,
 }) => {
-  const config = TYPE_CONFIG[opportunity.type] ?? TYPE_CONFIG.hackathon;
+  const config = TYPE_CONFIG[opportunity.type] ?? TYPE_CONFIG.bootcamp;
 
   const formatDeadline = (deadline: string | null) => {
     if (!deadline) return null;
@@ -70,7 +69,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
   if (compact) {
     return (
-      <Touchable
+      <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.9}
         style={[styles.compactCard, { borderLeftColor: config.color }]}
@@ -87,12 +86,12 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({
             <Text style={[styles.deadlineText, { color: config.color }]}>{deadlineText}</Text>
           </View>
         )}
-      </Touchable>
+      </TouchableOpacity>
     );
   }
 
   return (
-    <Touchable
+    <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
       style={[styles.card, { borderRightColor: config.color }]}
@@ -141,7 +140,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({
           <Text style={styles.xpText}>{opportunity.xpReward} XP</Text>
         </View>
       </View>
-    </Touchable>
+    </TouchableOpacity>
   );
 };
 
@@ -152,15 +151,11 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
     borderRightWidth: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.ui.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 1,
-        shadowRadius: 8,
-      },
-      android: { elevation: 3 },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   topRow: {
     flexDirection: 'row',
@@ -257,15 +252,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: 220,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.ui.shadow,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 1,
-        shadowRadius: 4,
-      },
-      android: { elevation: 2 },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
     gap: 10,
   },
   compactIcon: {

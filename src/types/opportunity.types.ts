@@ -1,15 +1,26 @@
-export type OpportunityType = 'hackathon' | 'internship' | 'opensource' | 'volunteer';
+export type OpportunityType = 'bootcamp' | 'internship' | 'opensource' | 'volunteer';
 export type OpportunityStatus = 'open' | 'upcoming' | 'closed';
 export type FilterStatus = 'all' | 'open' | 'upcoming' | 'closed';
 
 export interface Opportunity {
   id: number;
+  extId: string | null;
   title: string;
+  subtitle: string | null;
   type: OpportunityType;
   organization: string;
   description: string;
   deadline: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  seats: number | null;
   location: string;
+  city: string | null;
+  region: string | null;
+  category: string | null;
+  jobType: string | null;
+  level: string | null;
+  durationWeeks: number | null;
   latitude: number | null;
   longitude: number | null;
   xpReward: number;
@@ -17,11 +28,16 @@ export interface Opportunity {
   imageUrl: string | null;
   isActive: number;
   createdAt: string;
-  // Computed fields
+  // Computed
   status?: OpportunityStatus;
-  // Extended fields (joined from other tables)
   isBookmarked?: boolean;
-  // Type-specific fields (can be added as needed)
+  // Open-source-specific (live from GitHub API)
+  githubUrl?: string;
+  stars?: number;
+  forks?: number;
+  language?: string;
+  isBeginnerFriendly?: boolean;
+  // Legacy / hackathon-style (kept optional for compatibility)
   participants?: number;
   teams?: number;
   prize?: string;
@@ -29,11 +45,6 @@ export interface Opportunity {
   duration?: string;
   volunteerSpots?: number;
   volunteerFilled?: number;
-  githubUrl?: string;
-  stars?: number;
-  forks?: number;
-  language?: string;
-  isBeginnerFriendly?: boolean;
 }
 
 export interface Bookmark {
@@ -58,6 +69,4 @@ export interface QRPayload {
   eventName: string;
   opportunityId?: number;
   xpReward: number;
-  /** Optional: opportunity type used as event_type in scan_logs */
-  eventType?: string;
 }

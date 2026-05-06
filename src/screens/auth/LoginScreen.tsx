@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -72,7 +73,7 @@ const LoginScreen: React.FC = () => {
       >
         {/* Gradient Header */}
         <LinearGradient
-          colors={[Colors.gradient.start, Colors.gradient.end]}
+          colors={Colors.gradient.all}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.header, { paddingTop: insets.top + 20 }]}
@@ -80,7 +81,11 @@ const LoginScreen: React.FC = () => {
           <View style={styles.decorCircle1} />
           <View style={styles.decorCircle2} />
           <View style={styles.logoBox}>
-            <Text style={styles.logoEmoji}>✦</Text>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.appName}>{Strings.app.name}</Text>
         </LinearGradient>
@@ -184,13 +189,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)', bottom: -30, left: -30,
   },
   logoBox: {
-    width: 72, height: 72, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 144, height: 144, borderRadius: 34,
+    backgroundColor: Colors.text.white,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.20, shadowRadius: 16,
+    elevation: 6,
   },
-  logoEmoji: { fontSize: 32, color: Colors.text.white },
+  logoImage: { width: 108, height: 108 },
   appName: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.fontSize['2xl'],

@@ -10,7 +10,7 @@ import HomeStackNavigator from './HomeStackNavigator';
 import OpportunitiesStackNavigator from './OpportunitiesStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import QRScannerScreen from '../screens/qr/QRScannerScreen';
-import LeaderboardScreen from '../screens/leaderboard/LeaderboardScreen';
+import LeaderboardStackNavigator from './LeaderboardStackNavigator';
 import { Strings } from '../constants/strings';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -86,7 +86,7 @@ const TabNavigator: React.FC = () => {
       />
       <Tab.Screen
         name="LeaderboardTab"
-        component={LeaderboardScreen}
+        component={LeaderboardStackNavigator}
         options={{ title: Strings.navigation.leaderboard }}
       />
       <Tab.Screen

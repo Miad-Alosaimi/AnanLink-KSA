@@ -17,7 +17,7 @@ const FilterChip: React.FC<FilterChipProps> = ({ label, isSelected, onPress, cou
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.wrapper}>
         <LinearGradient
-          colors={[Colors.gradient.start, Colors.gradient.end]}
+          colors={Colors.gradient.all}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.selectedChip}

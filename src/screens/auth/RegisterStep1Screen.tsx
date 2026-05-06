@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import { Colors, Typography, Strings } from '../../constants';
+import { Colors, Typography, Strings, CAREERS, getCareerById } from '../../constants';
 import { AuthStackParamList, RegisterStep1Data } from '../../types';
 import { Input } from '../../components/common';
 
@@ -52,13 +52,19 @@ const indicatorStyles = StyleSheet.create({
   inactive: { backgroundColor: Colors.ui.border },
 });
 
+type PickerOption = string | { value: string; label: string; icon?: string };
+
 type PickerModalProps = {
   visible: boolean;
-  options: string[];
+  options: PickerOption[];
   onSelect: (value: string) => void;
   onClose: () => void;
   title: string;
 };
+
+const optionValue = (o: PickerOption): string => typeof o === 'string' ? o : o.value;
+const optionLabel = (o: PickerOption): string => typeof o === 'string' ? o : o.label;
+const optionIcon  = (o: PickerOption): string | undefined => typeof o === 'string' ? undefined : o.icon;
 
 const PickerModal: React.FC<PickerModalProps> = ({
   visible, options, onSelect, onClose, title,
@@ -70,12 +76,19 @@ const PickerModal: React.FC<PickerModalProps> = ({
         <Text style={modalStyles.title}>{title}</Text>
         <FlatList
           data={options}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={modalStyles.option} onPress={() => onSelect(item)}>
-              <Text style={modalStyles.optionText}>{item}</Text>
-            </TouchableOpacity>
-          )}
+          keyExtractor={(item) => optionValue(item)}
+          renderItem={({ item }) => {
+            const icon = optionIcon(item);
+            return (
+              <TouchableOpacity
+                style={modalStyles.option}
+                onPress={() => onSelect(optionValue(item))}
+              >
+                {icon && <Text style={modalStyles.optionIcon}>{icon}</Text>}
+                <Text style={modalStyles.optionText}>{optionLabel(item)}</Text>
+              </TouchableOpacity>
+            );
+          }}
           showsVerticalScrollIndicator={false}
         />
       </View>
@@ -101,11 +114,13 @@ const modalStyles = StyleSheet.create({
     color: Colors.text.primary, textAlign: 'right', marginBottom: 12,
   },
   option: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.ui.divider,
   },
+  optionIcon: { fontSize: 20 },
   optionText: {
     fontFamily: Typography.fontFamily.regular, fontSize: Typography.fontSize.base,
-    color: Colors.text.primary, textAlign: 'right',
+    color: Colors.text.primary, textAlign: 'right', flex: 1,
   },
 });
 
@@ -150,7 +165,7 @@ const RegisterStep1Screen: React.FC = () => {
     >
       <StatusBar style="light" />
       <LinearGradient
-        colors={[Colors.gradient.start, Colors.gradient.end]}
+        colors={Colors.gradient.all}
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -221,7 +236,7 @@ const RegisterStep1Screen: React.FC = () => {
 
         <Input
           label={Strings.auth.register.specialtyLabel}
-          value={specialty}
+          value={getCareerById(specialty)?.title ?? ''}
           onChangeText={() => {}}
           placeholder="اختر مسارك التقني"
           leftIcon="code-slash-outline"
@@ -231,7 +246,7 @@ const RegisterStep1Screen: React.FC = () => {
 
         <TouchableOpacity onPress={handleNext} activeOpacity={0.9} style={styles.nextButton}>
           <LinearGradient
-            colors={[Colors.gradient.start, Colors.gradient.end]}
+            colors={Colors.gradient.all}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={styles.nextGradient}
           >
@@ -258,7 +273,7 @@ const RegisterStep1Screen: React.FC = () => {
       />
       <PickerModal
         visible={specModalVisible}
-        options={Strings.auth.specialties}
+        options={CAREERS.map(c => ({ value: c.id, label: c.title, icon: c.icon }))}
         onSelect={(val) => { setSpecialty(val); setSpecModalVisible(false); }}
         onClose={() => setSpecModalVisible(false)}
         title={Strings.auth.register.specialtyLabel}

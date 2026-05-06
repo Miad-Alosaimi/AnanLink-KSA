@@ -35,7 +35,7 @@ const GradientHeader: React.FC<GradientHeaderProps> = ({
 
   return (
     <LinearGradient
-      colors={[Colors.gradient.start, Colors.gradient.end]}
+      colors={Colors.gradient.all}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[

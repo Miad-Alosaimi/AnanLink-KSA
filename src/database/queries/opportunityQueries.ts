@@ -66,7 +66,7 @@ export const getOpportunityCountByType = async (): Promise<Record<OpportunityTyp
     counts[row.type] = row.count;
   }
   return {
-    hackathon: counts['hackathon'] ?? 0,
+    bootcamp: counts['bootcamp'] ?? 0,
     internship: counts['internship'] ?? 0,
     opensource: counts['opensource'] ?? 0,
     volunteer: counts['volunteer'] ?? 0,

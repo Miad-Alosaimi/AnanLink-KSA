@@ -1,5 +1,6 @@
 import { getDatabase } from '../db';
 import { Bookmark, Opportunity } from '../../types';
+import { OpportunityType } from '../../types/opportunity.types';
 
 export const toggleBookmark = async (
   userId: number,
@@ -24,6 +25,29 @@ export const toggleBookmark = async (
     );
     return true;
   }
+};
+
+/** Count bookmarks grouped by opportunity type (used by profile stats). */
+export const getBookmarkCountByType = async (
+  userId: number
+): Promise<Record<OpportunityType, number>> => {
+  const db = getDatabase();
+  const results = await db.getAllAsync<{ type: string; count: number }>(
+    `SELECT o.type AS type, COUNT(*) AS count
+     FROM bookmarks b INNER JOIN opportunities o ON b.opportunityId = o.id
+     WHERE b.userId = ? GROUP BY o.type`,
+    [userId]
+  );
+  const counts: Record<string, number> = {};
+  for (const row of results) {
+    counts[row.type] = row.count;
+  }
+  return {
+    bootcamp: counts['bootcamp'] ?? 0,
+    internship: counts['internship'] ?? 0,
+    opensource: counts['opensource'] ?? 0,
+    volunteer: counts['volunteer'] ?? 0,
+  };
 };
 
 export const isBookmarked = async (

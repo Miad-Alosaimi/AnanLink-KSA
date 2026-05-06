@@ -4,7 +4,7 @@ import { HomeStackParamList } from '../types';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import HomeMapScreen from '../screens/home/HomeMapScreen';
-import OpportunityDetailScreen from '../screens/opportunities/OpportunityDetailScreen';
+import OpportunityDetailDispatcher from '../screens/home/OpportunityDetailDispatcher';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -13,7 +13,7 @@ const HomeStackNavigator: React.FC = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="HomeMap" component={HomeMapScreen} />
-      <Stack.Screen name="OpportunityDetail" component={OpportunityDetailScreen} />
+      <Stack.Screen name="OpportunityDetail" component={OpportunityDetailDispatcher} />
     </Stack.Navigator>
   );
 };

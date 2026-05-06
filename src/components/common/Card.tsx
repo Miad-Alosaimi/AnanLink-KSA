@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
-import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { Colors } from '../../constants';
-import Touchable from './Touchable';
 
 interface CardProps {
   children: ReactNode;
@@ -18,29 +17,9 @@ const Card: React.FC<CardProps> = ({
   elevation = 3,
   borderRadius = 16,
 }) => {
-  const dynamicStyle: ViewStyle = {
-    borderRadius,
-    ...Platform.select({ android: { elevation } }),
-  };
-
-  if (onPress) {
-    return (
-      <Touchable
-        onPress={onPress}
-        activeOpacity={0.92}
-        style={[styles.card, dynamicStyle, style]}
-      >
-        {children}
-      </Touchable>
-    );
-  }
-
-  return <View style={[styles.card, dynamicStyle, style]}>{children}</View>;
-};
-
-const styles = StyleSheet.create({
-  card: {
+  const cardStyle: ViewStyle = {
     backgroundColor: Colors.background.card,
+    borderRadius,
     ...Platform.select({
       ios: {
         shadowColor: Colors.ui.shadow,
@@ -48,8 +27,25 @@ const styles = StyleSheet.create({
         shadowOpacity: 1,
         shadowRadius: 8,
       },
+      android: {
+        elevation,
+      },
     }),
-  },
-});
+  };
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.92}
+        style={[cardStyle, style]}
+      >
+        {children}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={[cardStyle, style]}>{children}</View>;
+};
 
 export default Card;

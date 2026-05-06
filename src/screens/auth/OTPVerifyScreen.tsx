@@ -91,7 +91,7 @@ const OTPVerifyScreen: React.FC = () => {
     return (
       <View style={[styles.successContainer, { paddingTop: insets.top }]}>
         <LinearGradient
-          colors={[Colors.gradient.start, Colors.gradient.end]}
+          colors={Colors.gradient.all}
           style={styles.successGradient}
         >
           <View style={styles.successIcon}>
@@ -109,7 +109,7 @@ const OTPVerifyScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={[Colors.gradient.start, Colors.gradient.end]}
+        colors={Colors.gradient.all}
         style={styles.header}
       >
         <View style={styles.emailIconBox}>
@@ -162,7 +162,7 @@ const OTPVerifyScreen: React.FC = () => {
             colors={
               otp.some((d) => !d) || isVerifying
                 ? [Colors.ui.disabled, Colors.ui.disabled]
-                : [Colors.gradient.start, Colors.gradient.end]
+                : Colors.gradient.all
             }
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={styles.verifyButton}

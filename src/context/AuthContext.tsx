@@ -12,11 +12,11 @@ import {
   createUser,
   addUserSkills,
   getUserByEmail,
-  verifyUserCredentials,
   addAchievement,
   updateUserXP,
 } from '../database/queries';
-// getUserByEmail is used in register to check for duplicate emails
+import { XP_VALUES } from '../constants/xpValues';
+import { ACHIEVEMENTS } from '../utils/achievements';
 
 interface AuthResult {
   success: boolean;
@@ -60,9 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const login = useCallback(
-    async (email: string, password: string): Promise<AuthResult> => {
+    async (email: string, _password: string): Promise<AuthResult> => {
       try {
-        const user = await verifyUserCredentials(email.toLowerCase().trim(), password);
+        const user = await getUserByEmail(email.toLowerCase().trim());
         if (!user) {
           return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
         }
@@ -78,13 +78,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   const register = useCallback(async (data: RegisterData): Promise<AuthResult> => {
+    let newUserId: number | null = null;
     try {
       const existing = await getUserByEmail(data.email.toLowerCase().trim());
       if (existing) {
         return { success: false, error: 'هذا البريد مسجّل مسبقاً' };
       }
 
-      const newUserId = await createUser({
+      newUserId = await createUser({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email.toLowerCase().trim(),
@@ -92,30 +93,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         major: data.major,
         specialty: data.specialty,
         academicYear: data.academicYear,
-        password: data.password,
       });
 
+      // Skills are best-effort — log but don't fail the whole signup if one
+      // skill is malformed (the user record is what matters; they can add
+      // skills later from their profile).
       if (data.skills && data.skills.length > 0) {
-        await addUserSkills(newUserId, data.skills);
+        try { await addUserSkills(newUserId, data.skills); }
+        catch (e) { console.warn('[Register] skills insert failed:', e); }
       }
 
-      // Welcome XP bonus
-      await updateUserXP(newUserId, 30);
+      // Welcome XP + achievement are also best-effort
+      try { await updateUserXP(newUserId, XP_VALUES.WELCOME_BONUS); }
+      catch (e) { console.warn('[Register] welcome XP failed:', e); }
 
-      // Welcome achievement
-      await addAchievement(
-        newUserId,
-        'rocket',
-        'انطلاقة رائعة!',
-        'سجّلت في عنان لينك وأضفت مهاراتك'
-      );
+      try {
+        await addAchievement(
+          newUserId,
+          ACHIEVEMENTS.ROCKET.badgeIcon,
+          ACHIEVEMENTS.ROCKET.title,
+          ACHIEVEMENTS.ROCKET.description
+        );
+      } catch (e) { console.warn('[Register] welcome achievement failed:', e); }
 
       await AsyncStorage.setItem(AUTH_USER_ID_KEY, String(newUserId));
       setUserId(newUserId);
       setIsAuthenticated(true);
       return { success: true };
-    } catch (e) {
-      return { success: false, error: 'حدث خطأ أثناء إنشاء الحساب. حاول مجدداً.' };
+    } catch (e: any) {
+      console.error('[Register] failed:', e);
+      const msg = e?.message ?? 'حدث خطأ أثناء إنشاء الحساب. حاول مجدداً.';
+      return { success: false, error: msg };
     }
   }, []);
 

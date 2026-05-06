@@ -3,14 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
+  Image,
   Animated,
-  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { Colors, Typography } from '../../constants';
 import { Strings } from '../../constants/strings';
 
+const { width, height } = Dimensions.get('window');
 
 const SplashScreen: React.FC = () => {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -42,7 +44,7 @@ const SplashScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={[Colors.gradient.start, Colors.gradient.end]}
+      colors={Colors.gradient.all}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
@@ -54,9 +56,13 @@ const SplashScreen: React.FC = () => {
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
       <Animated.View style={{ opacity, transform: [{ scale }], alignItems: 'center' }}>
-        {/* Logo Icon */}
+        {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logoEmoji}>✦</Text>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <Text style={styles.appName}>{Strings.app.name}</Text>
@@ -73,12 +79,6 @@ const SplashScreen: React.FC = () => {
             </View>
           ))}
         </View>
-
-        <ActivityIndicator
-          size="small"
-          color="rgba(255,255,255,0.7)"
-          style={styles.loader}
-        />
       </Animated.View>
     </LinearGradient>
   );
@@ -109,19 +109,21 @@ const styles = StyleSheet.create({
     left: -50,
   },
   logoContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 180,
+    height: 180,
+    borderRadius: 42,
+    backgroundColor: Colors.text.white,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.32, shadowRadius: 26,
+    elevation: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
-  logoEmoji: {
-    fontSize: 44,
-    color: Colors.text.white,
+  logo: {
+    width: 128,
+    height: 128,
   },
   appName: {
     fontFamily: Typography.fontFamily.extraBold,
@@ -153,9 +155,6 @@ const styles = StyleSheet.create({
   },
   featureEmoji: {
     fontSize: 20,
-  },
-  loader: {
-    marginTop: 32,
   },
 });
 

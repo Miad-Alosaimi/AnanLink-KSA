@@ -7,17 +7,19 @@ export interface User {
   university: string;
   major: string;
   specialty: string;
-  academicYear: number;
+  academicYear: string | number;
   xp: number;
   level: number;
   avatar: string | null;
+  avatarUri: string | null;
+  isSuggestion: number;
   createdAt: string;
 }
 
 export interface UserSkill {
   id: number;
   userId: number;
-  skillName: string;
+  skill: string;
   proficiencyLevel: 'beginner' | 'intermediate' | 'advanced';
 }
 

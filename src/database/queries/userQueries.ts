@@ -1,14 +1,14 @@
 import { getDatabase } from '../db';
-import { User, UserSkill, Achievement, RegisterData, LeaderboardEntry } from '../../types';
+import { User, UserSkill, Achievement, RegisterData } from '../../types';
 
 export const createUser = async (
-  userData: Omit<RegisterData, 'skills'>
+  userData: Omit<RegisterData, 'password' | 'skills'>
 ): Promise<number> => {
   const db = getDatabase();
   const fullName = `${userData.firstName} ${userData.lastName}`;
   const result = await db.runAsync(
-    `INSERT INTO users (fullName, firstName, lastName, email, university, major, specialty, academicYear, password)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (fullName, firstName, lastName, email, university, major, specialty, academicYear)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       fullName,
       userData.firstName,
@@ -18,7 +18,6 @@ export const createUser = async (
       userData.major,
       userData.specialty,
       userData.academicYear,
-      userData.password,
     ]
   );
   return result.lastInsertRowId;
@@ -29,17 +28,6 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   return db.getFirstAsync<User>('SELECT * FROM users WHERE email = ? LIMIT 1', [email]);
 };
 
-export const verifyUserCredentials = async (
-  email: string,
-  password: string
-): Promise<User | null> => {
-  const db = getDatabase();
-  return db.getFirstAsync<User>(
-    "SELECT * FROM users WHERE email = ? AND password = ? LIMIT 1",
-    [email, password]
-  );
-};
-
 export const getUserById = async (id: number): Promise<User | null> => {
   const db = getDatabase();
   return db.getFirstAsync<User>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
@@ -47,12 +35,25 @@ export const getUserById = async (id: number): Promise<User | null> => {
 
 export const updateUserXP = async (userId: number, xpToAdd: number): Promise<void> => {
   const db = getDatabase();
+  // Progressive level thresholds: 0/100/300/600/1000/1500/2200/3000 (see utils/levelCalc)
+  // Clamp XP to zero minimum so unchecking a unit never produces negative XP.
+  // The CASE expression re-evaluates level on every update, so deductions
+  // (e.g. uncompleting a skill unit) also re-calibrate the user's level.
   await db.runAsync(
     `UPDATE users
-     SET xp = xp + ?,
-         level = MAX(1, (xp + ?) / 100 + 1)
+     SET xp = MAX(0, xp + ?),
+         level = CASE
+           WHEN MAX(0, xp + ?) >= 3000 THEN 8
+           WHEN MAX(0, xp + ?) >= 2200 THEN 7
+           WHEN MAX(0, xp + ?) >= 1500 THEN 6
+           WHEN MAX(0, xp + ?) >= 1000 THEN 5
+           WHEN MAX(0, xp + ?) >= 600  THEN 4
+           WHEN MAX(0, xp + ?) >= 300  THEN 3
+           WHEN MAX(0, xp + ?) >= 100  THEN 2
+           ELSE 1
+         END
      WHERE id = ?`,
-    [xpToAdd, xpToAdd, userId]
+    [xpToAdd, xpToAdd, xpToAdd, xpToAdd, xpToAdd, xpToAdd, xpToAdd, xpToAdd, userId]
   );
 };
 
@@ -60,7 +61,7 @@ export const addUserSkills = async (userId: number, skills: string[]): Promise<v
   const db = getDatabase();
   for (const skill of skills) {
     await db.runAsync(
-      `INSERT OR IGNORE INTO user_skills (userId, skillName) VALUES (?, ?)`,
+      `INSERT OR IGNORE INTO user_skills (userId, skill) VALUES (?, ?)`,
       [userId, skill]
     );
   }
@@ -92,52 +93,66 @@ export const addAchievement = async (
   );
 };
 
-export type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
+/**
+ * Update editable profile fields. Pass undefined for fields you don't want to change.
+ * Always updates the updatedAt timestamp.
+ */
+export interface UpdateProfileInput {
+  firstName?: string;
+  lastName?: string;
+  university?: string;
+  major?: string;
+  specialty?: string;
+  academicYear?: string;
+  avatarUri?: string | null;
+}
 
-export const getLeaderboard = async (
-  limit = 20,
-  period: LeaderboardPeriod = 'alltime'
-): Promise<LeaderboardEntry[]> => {
+export const updateUserProfile = async (
+  userId: number,
+  patch: UpdateProfileInput
+): Promise<void> => {
   const db = getDatabase();
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
 
-  let rows: Array<User & { periodXp?: number }>;
-
-  if (period === 'alltime') {
-    rows = await db.getAllAsync<User>(
-      'SELECT * FROM users ORDER BY xp DESC LIMIT ?',
-      [limit]
-    );
-    return rows.map((user, index) => ({
-      id: user.id,
-      fullName: user.fullName,
-      university: user.university,
-      xp: user.xp,
-      level: user.level,
-      rank: index + 1,
-      avatar: user.avatar,
-    }));
+  if (patch.firstName !== undefined) {
+    fields.push('firstName = ?'); values.push(patch.firstName);
   }
+  if (patch.lastName !== undefined) {
+    fields.push('lastName = ?'); values.push(patch.lastName);
+  }
+  if (patch.firstName !== undefined || patch.lastName !== undefined) {
+    // Recompute fullName from latest first/last
+    fields.push("fullName = (firstName || ' ' || lastName)");
+  }
+  if (patch.university !== undefined) {
+    fields.push('university = ?'); values.push(patch.university);
+  }
+  if (patch.major !== undefined) {
+    fields.push('major = ?'); values.push(patch.major);
+  }
+  if (patch.specialty !== undefined) {
+    fields.push('specialty = ?'); values.push(patch.specialty);
+  }
+  if (patch.academicYear !== undefined) {
+    fields.push('academicYear = ?'); values.push(patch.academicYear);
+  }
+  if (patch.avatarUri !== undefined) {
+    fields.push('avatarUri = ?'); values.push(patch.avatarUri);
+  }
+  if (fields.length === 0) return;
 
-  const interval = period === 'weekly' ? '-7 days' : '-30 days';
-  const periodRows = await db.getAllAsync<{ id: number; fullName: string; university: string; avatar: string | null; level: number; periodXp: number }>(
-    `SELECT u.id, u.fullName, u.university, u.avatar, u.level,
-            COALESCE(SUM(q.xpEarned), 0) as periodXp
-     FROM users u
-     LEFT JOIN qr_checkins q ON u.id = q.userId
-       AND q.scannedAt >= datetime('now', ?)
-     GROUP BY u.id
-     ORDER BY periodXp DESC
-     LIMIT ?`,
-    [interval, limit]
+  // Only include updatedAt if the column actually exists in this device's DB.
+  // The column is added by migration v5, but older installs where the migration
+  // failed silently would crash here without this guard.
+  const tableInfo = await db.getAllAsync<{ name: string }>('PRAGMA table_info(users)');
+  if (tableInfo.some(col => col.name === 'updatedAt')) {
+    fields.push("updatedAt = datetime('now')");
+  }
+  values.push(userId);
+
+  await db.runAsync(
+    `UPDATE users SET ${fields.join(', ')} WHERE id = ?`,
+    values
   );
-
-  return periodRows.map((row, index) => ({
-    id: row.id,
-    fullName: row.fullName,
-    university: row.university,
-    xp: row.periodXp,
-    level: row.level,
-    rank: index + 1,
-    avatar: row.avatar,
-  }));
 };

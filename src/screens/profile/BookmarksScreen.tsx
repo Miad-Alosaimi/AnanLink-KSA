@@ -5,25 +5,23 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Strings } from '../../constants';
 import { ProfileStackParamList, Opportunity, OpportunityType } from '../../types';
 import { OpportunityCard, FilterChip } from '../../components/opportunity';
 import { GradientHeader, EmptyState, LoadingSpinner } from '../../components/common';
 import { getUserBookmarks } from '../../database/queries/bookmarkQueries';
-import { useAuth } from '../../context/AuthContext';
-import { useBookmarks } from '../../context/BookmarkContext';
+import { toggleBookmark } from '../../database/queries/bookmarkQueries';
+import { useAuth } from '../../context';
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList>;
 
 const FILTER_TABS: { label: string; value: OpportunityType | 'all' }[] = [
   { label: Strings.opportunities.filters.all, value: 'all' },
-  { label: Strings.opportunities.types.hackathon, value: 'hackathon' },
+  { label: Strings.opportunities.types.bootcamp, value: 'bootcamp' },
   { label: Strings.opportunities.types.internship, value: 'internship' },
   { label: Strings.opportunities.types.volunteer, value: 'volunteer' },
   { label: Strings.opportunities.types.opensource, value: 'opensource' },
@@ -32,11 +30,9 @@ const FILTER_TABS: { label: string; value: OpportunityType | 'all' }[] = [
 const BookmarksScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { userId } = useAuth();
-  const { bookmarkedIds, toggleBookmarkItem } = useBookmarks();
 
   const [bookmarks, setBookmarks] = useState<Opportunity[]>([]);
   const [filter, setFilter] = useState<OpportunityType | 'all'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -47,8 +43,7 @@ const BookmarksScreen: React.FC = () => {
     setIsLoading(false);
   }, [userId]);
 
-  // Reload whenever the shared bookmarkedIds change (from DetailScreen toggles)
-  useEffect(() => { loadBookmarks(); }, [loadBookmarks, bookmarkedIds]);
+  useEffect(() => { loadBookmarks(); }, [loadBookmarks]);
 
   const onRefresh = async () => {
     setIsRefreshing(true);
@@ -57,17 +52,12 @@ const BookmarksScreen: React.FC = () => {
   };
 
   const handleRemoveBookmark = async (opp: Opportunity) => {
-    await toggleBookmarkItem(opp.id);
+    if (!userId) return;
+    await toggleBookmark(userId, opp.id);
+    setBookmarks(prev => prev.filter(b => b.id !== opp.id));
   };
 
-  const filtered = bookmarks
-    .filter(b => filter === 'all' || b.type === filter)
-    .filter(b =>
-      searchQuery.trim()
-        ? b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.organization.toLowerCase().includes(searchQuery.toLowerCase())
-        : true
-    );
+  const filtered = filter === 'all' ? bookmarks : bookmarks.filter(b => b.type === filter);
 
   return (
     <View style={styles.container}>
@@ -76,20 +66,6 @@ const BookmarksScreen: React.FC = () => {
         showBack
         onBack={() => navigation.goBack()}
       />
-
-      {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color={Colors.text.secondary} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="ابحث في المحفوظات..."
-          placeholderTextColor={Colors.text.muted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
-          textAlign="right"
-        />
-      </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
         {FILTER_TABS.map(tab => (
@@ -134,27 +110,7 @@ const BookmarksScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.app },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.card,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchIcon: { marginLeft: 6 },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text.primary,
-    paddingVertical: 0,
-  },
-  filterBar: { maxHeight: 52, backgroundColor: Colors.background.card, borderBottomWidth: 1, borderBottomColor: Colors.ui.border, marginTop: 8 },
+  filterBar: { maxHeight: 52, backgroundColor: Colors.background.card, borderBottomWidth: 1, borderBottomColor: Colors.ui.border },
   filterContent: { paddingHorizontal: 16, paddingVertical: 8 },
   listContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
 });

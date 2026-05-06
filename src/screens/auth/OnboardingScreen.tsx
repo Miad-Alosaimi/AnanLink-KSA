@@ -25,22 +25,25 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 const SLIDES = [
   {
     id: '1',
+    icon: 'rocket-outline' as const,
     emojiIcon: '🚀',
-    gradient: [Colors.gradient.start, '#9B59B6'] as [string, string],
+    gradient: [Colors.primary.purple, Colors.primary.purpleMid] as [string, string],
     title: Strings.onboarding.slide1.title,
     subtitle: Strings.onboarding.slide1.subtitle,
   },
   {
     id: '2',
+    icon: 'star-outline' as const,
     emojiIcon: '⭐',
-    gradient: ['#9B59B6', Colors.gradient.end] as [string, string],
+    gradient: [Colors.primary.purpleMid, Colors.primary.teal] as [string, string],
     title: Strings.onboarding.slide2.title,
     subtitle: Strings.onboarding.slide2.subtitle,
   },
   {
     id: '3',
+    icon: 'map-outline' as const,
     emojiIcon: '🗺️',
-    gradient: [Colors.gradient.end, '#00D2A0'] as [string, string],
+    gradient: [Colors.primary.teal, Colors.primary.teal2] as [string, string],
     title: Strings.onboarding.slide3.title,
     subtitle: Strings.onboarding.slide3.subtitle,
   },
@@ -50,8 +53,6 @@ const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
-  // scrollX drives animated dot widths / opacities
-  const scrollX = useRef(new Animated.Value(0)).current;
 
   const handleFinish = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
@@ -68,6 +69,10 @@ const OnboardingScreen: React.FC = () => {
     }
   };
 
+  const handleSkip = () => {
+    handleFinish();
+  };
+
   const renderSlide = ({ item }: { item: typeof SLIDES[0] }) => (
     <View style={styles.slideContainer}>
       <LinearGradient
@@ -76,8 +81,10 @@ const OnboardingScreen: React.FC = () => {
         end={{ x: 1, y: 1 }}
         style={styles.slideGradient}
       >
+        {/* Decorative circles */}
         <View style={styles.decorCircle1} />
         <View style={styles.decorCircle2} />
+
         <View style={styles.iconWrapper}>
           <Text style={styles.emojiIcon}>{item.emojiIcon}</Text>
         </View>
@@ -95,7 +102,7 @@ const OnboardingScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Skip button */}
-      <TouchableOpacity style={styles.skipButton} onPress={handleFinish}>
+      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
         <Text style={styles.skipText}>{Strings.onboarding.skip}</Text>
       </TouchableOpacity>
 
@@ -107,11 +114,7 @@ const OnboardingScreen: React.FC = () => {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
-        )}
+        scrollEnabled
         onMomentumScrollEnd={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / width);
           setCurrentIndex(index);
@@ -119,48 +122,24 @@ const OnboardingScreen: React.FC = () => {
         style={styles.flatList}
       />
 
-      {/* Animated pagination dots */}
+      {/* Dots */}
       <View style={styles.dotsContainer}>
-        {SLIDES.map((_, index) => {
-          const dotWidth = scrollX.interpolate({
-            inputRange: [
-              (index - 1) * width,
-              index * width,
-              (index + 1) * width,
-            ],
-            outputRange: [8, 24, 8],
-            extrapolate: 'clamp',
-          });
-          const dotOpacity = scrollX.interpolate({
-            inputRange: [
-              (index - 1) * width,
-              index * width,
-              (index + 1) * width,
-            ],
-            outputRange: [0.4, 1, 0.4],
-            extrapolate: 'clamp',
-          });
-          return (
-            <Animated.View
-              key={index}
-              style={[
-                styles.dot,
-                {
-                  width: dotWidth,
-                  opacity: dotOpacity,
-                  backgroundColor: Colors.primary.purple,
-                },
-              ]}
-            />
-          );
-        })}
+        {SLIDES.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              index === currentIndex ? styles.activeDot : styles.inactiveDot,
+            ]}
+          />
+        ))}
       </View>
 
-      {/* Get Started / Next button — pinned at bottom */}
+      {/* Next / Start button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handleNext} activeOpacity={0.9}>
           <LinearGradient
-            colors={[Colors.gradient.start, Colors.gradient.end]}
+            colors={Colors.gradient.all}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.nextButton}
@@ -179,15 +158,28 @@ const OnboardingScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background.app },
-  skipButton: { position: 'absolute', top: 56, left: 24, zIndex: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background.app,
+  },
+  skipButton: {
+    position: 'absolute',
+    top: 56,
+    left: 24,
+    zIndex: 10,
+  },
   skipText: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.fontSize.base,
     color: Colors.text.secondary,
   },
-  flatList: { flex: 1 },
-  slideContainer: { width, flex: 1 },
+  flatList: {
+    flex: 1,
+  },
+  slideContainer: {
+    width,
+    flex: 1,
+  },
   slideGradient: {
     height: height * 0.52,
     alignItems: 'center',
@@ -195,21 +187,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   decorCircle1: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -80, right: -60,
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    top: -80,
+    right: -60,
   },
   decorCircle2: {
-    position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.07)', bottom: -40, left: -40,
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    bottom: -40,
+    left: -40,
   },
   iconWrapper: {
-    width: 120, height: 120, borderRadius: 36,
+    width: 120,
+    height: 120,
+    borderRadius: 36,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
-  emojiIcon: { fontSize: 56 },
-  textSection: { flex: 1, paddingHorizontal: 32, paddingTop: 36, alignItems: 'center' },
+  emojiIcon: {
+    fontSize: 56,
+  },
+  textSection: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingTop: 36,
+    alignItems: 'center',
+  },
   slideTitle: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.fontSize['2xl'],
@@ -231,28 +244,38 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingBottom: 20,
   },
-  dot: { height: 8, borderRadius: 4 },
-  // Pinned at bottom via absolute positioning
+  dot: {
+    borderRadius: 4,
+    height: 8,
+  },
+  activeDot: {
+    width: 24,
+    backgroundColor: Colors.primary.purple,
+  },
+  inactiveDot: {
+    width: 8,
+    backgroundColor: Colors.ui.border,
+  },
   buttonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 24,
     paddingBottom: 40,
-    paddingTop: 8,
-    backgroundColor: Colors.background.app,
   },
   nextButton: {
-    borderRadius: 16, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   nextButtonText: {
     fontFamily: Typography.fontFamily.semiBold,
     fontSize: Typography.fontSize.lg,
     color: Colors.text.white,
   },
-  arrowIcon: { transform: [{ scaleX: -1 }] },
+  arrowIcon: {
+    transform: [{ scaleX: -1 }],
+  },
 });
 
 export default OnboardingScreen;

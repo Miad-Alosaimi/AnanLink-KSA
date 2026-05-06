@@ -1,69 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import MapView, { Marker, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Colors, Typography, Strings } from '../../constants';
-import { Opportunity, OpportunityType } from '../../types';
+import { Opportunity, OpportunityType, HomeStackParamList } from '../../types';
 import { getOpportunitiesWithLocation } from '../../database/queries';
 import { FilterChip } from '../../components/opportunity';
 import { GradientHeader } from '../../components/common';
 
+type Nav = NativeStackNavigationProp<HomeStackParamList>;
+
 const TYPE_FILTERS: { label: string; value: OpportunityType | 'all' }[] = [
   { label: Strings.opportunities.filters.all, value: 'all' },
-  { label: Strings.opportunities.types.hackathon, value: 'hackathon' },
+  { label: Strings.opportunities.types.bootcamp, value: 'bootcamp' },
   { label: Strings.opportunities.types.internship, value: 'internship' },
-  { label: Strings.opportunities.types.opensource, value: 'opensource' },
   { label: Strings.opportunities.types.volunteer, value: 'volunteer' },
 ];
 
+const TYPE_COLORS: Record<OpportunityType, string> = {
+  bootcamp: Colors.opportunity.hackathon,
+  internship: Colors.opportunity.internship,
+  opensource: Colors.opportunity.opensource, // unused on map, kept for type completeness
+  volunteer: Colors.opportunity.volunteer,
+};
+
 const HomeMapScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [filter, setFilter] = useState<OpportunityType | 'all'>('all');
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getOpportunitiesWithLocation().then(setOpportunities);
-
     (async () => {
+      // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-      } else {
-        setLocationDenied(true);
+        try {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          setUserLocation(loc);
+        } catch {
+          // fall through — map still renders, just centered on Riyadh default
+        }
       }
+      // Load opportunities
+      const opps = await getOpportunitiesWithLocation();
+      setOpportunities(opps);
+      setIsLoading(false);
     })();
   }, []);
 
-  const filtered = filter === 'all' ? opportunities : opportunities.filter(o => o.type === filter);
-
-  // Dynamic import to handle potential missing react-native-maps gracefully
-  let MapView: any = null;
-  let Marker: any = null;
-  let Callout: any = null;
-  try {
-    const maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-    Callout = maps.Callout;
-  } catch {
-    // maps not available
-  }
-
-  const TYPE_COLORS: Record<string, string> = {
-    hackathon: Colors.opportunity.hackathon,
-    internship: Colors.opportunity.internship,
-    opensource: Colors.opportunity.opensource,
-    volunteer: Colors.opportunity.volunteer,
-  };
+  const filtered = (filter === 'all'
+    ? opportunities
+    : opportunities.filter(o => o.type === filter)
+  ).filter(o => o.type !== 'opensource'); // never plot github repos on a map
 
   const initialRegion = userLocation
-    ? { latitude: userLocation.latitude, longitude: userLocation.longitude, latitudeDelta: 0.5, longitudeDelta: 0.5 }
-    : { latitude: 24.7136, longitude: 46.6753, latitudeDelta: 8, longitudeDelta: 8 };
+    ? {
+        latitude: userLocation.coords.latitude,
+        longitude: userLocation.coords.longitude,
+        latitudeDelta: 0.3,
+        longitudeDelta: 0.3,
+      }
+    : {
+        latitude: 24.7136, // Riyadh
+        longitude: 46.6753,
+        latitudeDelta: 8,
+        longitudeDelta: 8,
+      };
+
+  const handleMarkerPress = (opp: Opportunity) => {
+    navigation.navigate('OpportunityDetail', { opportunityId: opp.id, type: opp.type });
+  };
 
   return (
     <View style={styles.container}>
@@ -73,59 +94,74 @@ const HomeMapScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      {/* Location denied banner */}
-      {locationDenied && (
-        <TouchableOpacity style={styles.locationBanner} onPress={() => Linking.openSettings()}>
-          <Ionicons name="location-outline" size={16} color={Colors.status.warning} />
-          <Text style={styles.locationBannerText}>
-            {Strings.home.locationDenied}
-          </Text>
-          <Ionicons name="chevron-back-outline" size={16} color={Colors.status.warning} />
-        </TouchableOpacity>
-      )}
-
       {/* Filter chips */}
-      <View style={styles.filterBar}>
-        {TYPE_FILTERS.map(f => (
-          <FilterChip
-            key={f.value}
-            label={f.label}
-            isSelected={filter === f.value}
-            onPress={() => setFilter(f.value)}
-          />
-        ))}
+      <View style={styles.filterBarWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBar}
+        >
+          {TYPE_FILTERS.map(f => (
+            <FilterChip
+              key={f.value}
+              label={f.label}
+              isSelected={filter === f.value}
+              onPress={() => setFilter(f.value)}
+            />
+          ))}
+        </ScrollView>
       </View>
 
-      {MapView ? (
-        <MapView
-          style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation={!!userLocation}
-          showsMyLocationButton={!!userLocation}
-        >
-          {filtered.map(opp => (
-            <Marker
-              key={opp.id}
-              coordinate={{ latitude: opp.latitude!, longitude: opp.longitude! }}
-              pinColor={TYPE_COLORS[opp.type]}
-            >
-              {Callout && (
-                <Callout>
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={Colors.primary.purple} size="large" />
+        </View>
+      ) : (
+        <>
+          <MapView
+            provider={PROVIDER_DEFAULT}
+            style={styles.map}
+            initialRegion={initialRegion}
+            showsUserLocation
+            showsMyLocationButton
+          >
+            {filtered.map(opp => (
+              <Marker
+                key={opp.id}
+                coordinate={{ latitude: opp.latitude!, longitude: opp.longitude! }}
+                pinColor={TYPE_COLORS[opp.type]}
+                onPress={() => {}}
+              >
+                <Callout onPress={() => handleMarkerPress(opp)} tooltip>
                   <View style={styles.callout}>
-                    <Text style={styles.calloutTitle}>{opp.title}</Text>
-                    <Text style={styles.calloutOrg}>{opp.organization}</Text>
+                    <View style={[styles.calloutDot, { backgroundColor: TYPE_COLORS[opp.type] }]} />
+                    <Text style={styles.calloutTitle} numberOfLines={2}>{opp.title}</Text>
+                    <Text style={styles.calloutOrg} numberOfLines={1}>{opp.organization}</Text>
+                    <View style={styles.calloutCta}>
+                      <Text style={styles.calloutCtaText}>عرض التفاصيل</Text>
+                      <Ionicons name="chevron-back" size={12} color={Colors.primary.purple} />
+                    </View>
                   </View>
                 </Callout>
-              )}
-            </Marker>
-          ))}
-        </MapView>
-      ) : (
-        <View style={styles.mapFallback}>
-          <Ionicons name="map-outline" size={60} color={Colors.ui.border} />
-          <Text style={styles.mapFallbackText}>{Strings.home.mapUnavailable}</Text>
-          <Text style={styles.mapFallbackSub}>{filtered.length} {Strings.home.mapOpportunitiesInArea}</Text>
-        </View>
+              </Marker>
+            ))}
+          </MapView>
+
+          {/* Legend */}
+          <View style={styles.legend}>
+            <Text style={styles.legendTitle}>{filtered.length} فرصة</Text>
+            <View style={styles.legendRow}>
+              {(Object.keys(TYPE_COLORS) as OpportunityType[])
+                .filter(type => type !== 'opensource')
+                .map(type => (
+                <View key={type} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: TYPE_COLORS[type] }]} />
+                  <Text style={styles.legendText}>{Strings.opportunities.types[type]}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </>
       )}
     </View>
   );
@@ -133,40 +169,37 @@ const HomeMapScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.app },
-  locationBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.status.warning + '18',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.status.warning + '44',
-  },
-  locationBannerText: {
-    flex: 1,
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.fontSize.sm,
-    color: Colors.status.warning,
-    textAlign: 'right',
-  },
-  filterBar: {
-    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10,
+  filterBarWrap: {
     backgroundColor: Colors.background.card,
-    borderBottomWidth: 1, borderBottomColor: Colors.ui.border,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.ui.border,
   },
+  filterBar: { paddingHorizontal: 12, paddingVertical: 10 },
   map: { flex: 1 },
-  callout: { padding: 8, maxWidth: 180 },
-  calloutTitle: { fontFamily: Typography.fontFamily.semiBold, fontSize: Typography.fontSize.sm, textAlign: 'right' },
-  calloutOrg: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.fontSize.xs, color: Colors.text.secondary, textAlign: 'right' },
-  mapFallback: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12,
-    backgroundColor: Colors.background.app,
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  callout: {
+    backgroundColor: Colors.background.card,
+    padding: 10, maxWidth: 200, borderRadius: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
   },
-  mapFallbackText: {
-    fontFamily: Typography.fontFamily.semiBold, fontSize: Typography.fontSize.lg,
-    color: Colors.text.secondary,
+  calloutDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 4 },
+  calloutTitle: { fontFamily: Typography.fontFamily.semiBold, fontSize: Typography.fontSize.sm, textAlign: 'right', color: Colors.text.primary },
+  calloutOrg: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.fontSize.xs, color: Colors.text.secondary, textAlign: 'right', marginTop: 2 },
+  calloutCta: { flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: 6 },
+  calloutCtaText: { fontFamily: Typography.fontFamily.medium, fontSize: Typography.fontSize.xs, color: Colors.primary.purple },
+  legend: {
+    position: 'absolute', bottom: 16, left: 16, right: 16,
+    backgroundColor: Colors.background.card, borderRadius: 14, padding: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
   },
-  mapFallbackSub: {
-    fontFamily: Typography.fontFamily.regular, fontSize: Typography.fontSize.base,
-    color: Colors.text.muted,
+  legendTitle: {
+    fontFamily: Typography.fontFamily.semiBold, fontSize: Typography.fontSize.sm,
+    color: Colors.text.primary, textAlign: 'right', marginBottom: 8,
   },
+  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.fontSize.xs, color: Colors.text.secondary },
 });
 
 export default HomeMapScreen;

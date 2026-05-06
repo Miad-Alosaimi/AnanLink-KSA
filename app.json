@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "عنان لينك",
+    "slug": "AnanLink",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#8f1eae"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "نحتاج إذن الكاميرا لمسح رموز QR وتسجيل حضورك في الفعاليات",
+        "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لعرض الفرص القريبة منك على الخريطة"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#8f1eae",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "نحتاج إذن الكاميرا لمسح رموز QR في الفعاليات"
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
